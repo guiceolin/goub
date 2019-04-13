@@ -6,6 +6,18 @@ import (
 	"time"
 )
 
+type Session struct {
+	payload map[string]interface{}
+}
+
+func (s *Session) Get(name string) interface{} {
+	return s.payload[name]
+}
+
+func (s *Session) Set(name string, value interface{}) {
+	s.payload[name] = value
+}
+
 type SessionManager struct {
 	domain         string
 	jwtSecret      []byte
@@ -13,15 +25,15 @@ type SessionManager struct {
 	expirationTime time.Time
 }
 
-func (sm *SessionManager) SetPayload(w http.ResponseWriter, payload map[string]interface{}) error {
-	tokenString, err := jwt.BuildJWT(sm.jwtSecret, payload, sm.expirationTime)
+func (sm *SessionManager) SetSession(w http.ResponseWriter, session Session) error {
+	tokenString, err := jwt.BuildJWT(sm.jwtSecret, session.payload, sm.expirationTime)
 
 	if err != nil {
 		return err
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:    "token",
+		Name:    sm.name,
 		Value:   tokenString,
 		Path:    "/",
 		Expires: sm.expirationTime,
@@ -31,7 +43,7 @@ func (sm *SessionManager) SetPayload(w http.ResponseWriter, payload map[string]i
 	return nil
 }
 
-func (sm *SessionManager) GetPayload(r *http.Request) map[string]interface{} {
+func (sm *SessionManager) GetSession(r *http.Request) *Session {
 	c, err := r.Cookie(sm.name)
 	if err != nil {
 		return nil
@@ -42,5 +54,5 @@ func (sm *SessionManager) GetPayload(r *http.Request) map[string]interface{} {
 		return nil
 	}
 
-	return payload
+	return &Session{payload: payload}
 }
